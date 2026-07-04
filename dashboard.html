@@ -329,8 +329,12 @@ async function refresh() {
 
     // Balance
     const bal = data.balance;
-    document.getElementById('bal-usdc').textContent = (bal && !bal.error)
-      ? fmtUSD(bal.balance || bal.usdc || bal.available) : '--';
+    if (bal && bal.total != null) {
+      document.getElementById('bal-usdc').textContent = fmtUSD(bal.total);
+      document.getElementById('bal-usdc').nextElementSibling.textContent = 'P&L: ' + fmtUSD(bal.pnl);
+    } else {
+      document.getElementById('bal-usdc').textContent = '--';
+    }
 
     // Orders
     const orders = data.orders || [];
@@ -357,33 +361,45 @@ async function refresh() {
     const activity = data.activity || [];
     document.getElementById('activity-count').textContent = activity.length;
     const at = document.getElementById('activity-tbody');
-    let pnl = 0;
     if (activity.length === 0) {
       at.innerHTML = '<tr><td colspan="4" class="empty">Sin actividad</td></tr>';
     } else {
       at.innerHTML = activity.slice(0, 25).map(a => {
         let tag, val;
+        const usd = parseFloat(a.usdcAmount || 0);
+        const shares = parseFloat(a.shares || 0);
         if (a.type === 'REDEEM') {
           tag = '<span class="tag tag-redeem">✅ Canjear</span>';
-          val = `<span class="value-pos">+${fmtUSD(a.usdcAmount||a.shares)}</span>`;
-          pnl += parseFloat(a.usdcAmount||a.shares||0);
+          val = `<span class="value-pos">+${fmtUSD(usd)}</span>`;
         } else if (a.type === 'TRADE' && a.side === 'BUY') {
-          tag = '<span class="tag tag-buy">➕ Comprar</span>';
-          val = `<span class="value-neg">-${fmtUSD(a.usdcAmount)}</span>`;
-          pnl -= parseFloat(a.usdcAmount||0);
+          // Detect loss: usdcSize ≈ 0 means position resolved to $0
+          if (usd < 0.001 && shares > 0) {
+            tag = '<span class="tag tag-loss">❌ Pérdida</span>';
+            val = '—';
+          } else {
+            tag = '<span class="tag tag-buy">➕ Comprar</span>';
+            val = `<span class="value-neg">-${fmtUSD(usd)}</span>`;
+          }
         } else if (a.type === 'TRADE' && a.side === 'SELL') {
           tag = '<span class="tag tag-sell">💰 Vender</span>';
-          val = `<span class="value-pos">+${fmtUSD(a.usdcAmount)}</span>`;
+          val = `<span class="value-pos">+${fmtUSD(usd)}</span>`;
         } else {
           tag = `<span class="tag">${a.type}</span>`;
-          val = fmtUSD(a.usdcAmount);
+          val = fmtUSD(usd);
         }
-        const sh = a.shares ? `<div class="market-detail">${parseFloat(a.shares).toFixed(4)} shares ${a.outcome||''}</div>` : '';
+        const outcomeLabel = a.outcomeIndex === 0 ? 'Up' : a.outcomeIndex === 1 ? 'Down' : '';
+        const sh = shares ? `<div class="market-detail">${shares.toFixed(4)} shares${outcomeLabel ? ' ' + outcomeLabel : ''}</div>` : '';
         return `<tr><td>${tag}</td><td><span class="btc-icon">₿</span><span class="market-name">${(a.title||'').substring(0,50)}</span>${sh}</td><td>${val}</td><td class="time-ago">${ago(a.timestamp)}</td></tr>`;
       }).join('');
-      document.getElementById('pnl-day').textContent = fmtUSD(pnl);
-      document.getElementById('pnl-day').className = 'value ' + (pnl >= 0 ? 'positive' : 'negative');
-      document.getElementById('pnl-pct').textContent = '';
+
+      // P&L from balance API
+      if (data.balance?.pnl != null) {
+        document.getElementById('pnl-day').textContent = fmtUSD(data.balance.pnl);
+        document.getElementById('pnl-day').className = 'value ' + (data.balance.pnl >= 0 ? 'positive' : 'negative');
+      }
+      if (data.balance?.total != null) {
+        document.getElementById('pnl-pct').textContent = 'Total: ' + fmtUSD(data.balance.total);
+      }
     }
 
     // Reasoning

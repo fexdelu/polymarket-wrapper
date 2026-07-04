@@ -266,24 +266,37 @@ function parseLog() {
 async function getActivity(env) {
     try {
         const funder = env.PM_FUNDER;
-        const data = await httpGet("data-api.polymarket.com", `/activity?user=${funder}&limit=30&sortBy=TIMESTAMP&sortDirection=DESC`);
+        const data = await httpGet("data-api.polymarket.com",
+            `/activity?user=${funder}&limit=50&sortBy=TIMESTAMP&sortDirection=DESC`);
         if (!Array.isArray(data)) return [];
         return data.map(a => ({
             type: a.type,
             title: a.title,
             side: a.side,
             outcome: a.outcome,
-            shares: a.shares || a.size,
-            usdcAmount: a.usdcAmount || a.amount,
-            price: a.price,
-            timestamp: a.timestamp,
+            outcomeIndex: a.outcomeIndex,
+            shares: a.size,                         // "size" not "shares"
+            usdcAmount: a.usdcSize,                  // "usdcSize" not "usdcAmount"
+            price: a.price,                          // already in USD
+            timestamp: a.timestamp * 1000,            // epoch SECONDS → ms
         }));
     } catch { return []; }
 }
 
 async function getBalance(env) {
+    // No direct balance API — compute from activity + known deposit
     try {
-        return await httpGet("data-api.polymarket.com", `/balances?user=${env.PM_FUNDER}`);
+        const activity = await getActivity(env);
+        const chrono = [...activity].reverse(); // oldest first
+        let bal = 0;
+        for (const a of chrono) {
+            if (a.type === "REDEEM") bal += a.usdcAmount || 0;
+            if (a.type === "TRADE" && a.side === "BUY") bal -= a.usdcAmount || 0;
+            if (a.type === "TRADE" && a.side === "SELL") bal += a.usdcAmount || 0;
+        }
+        // Add initial deposit (not in activity API — hardcoded for now)
+        const initialDeposit = parseFloat(env.PM_INITIAL_DEPOSIT || "0");
+        return { pnl: Math.round(bal * 100) / 100, total: Math.round((bal + initialDeposit) * 100) / 100, initialDeposit };
     } catch { return null; }
 }
 
