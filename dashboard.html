@@ -131,8 +131,8 @@ tr:hover { background:rgba(255,255,255,.02); }
 <div class="section-title">📋 Órdenes del bot <span class="count" id="orders-count">0</span></div>
 <div class="table-wrap">
   <table>
-    <thead><tr><th>Hora</th><th>Mercado</th><th>Precio</th><th>Side</th><th>Monto</th><th>Shares</th><th>Estado</th></tr></thead>
-    <tbody id="orders-tbody"><tr><td colspan="7" class="loading">Cargando...</td></tr></tbody>
+    <thead><tr><th>Hora</th><th>Mercado</th><th>Invirtió</th><th>Resultado</th><th>Neto</th></tr></thead>
+    <tbody id="orders-tbody"><tr><td colspan="5" class="loading">Cargando...</td></tr></tbody>
   </table>
 </div>
 
@@ -341,17 +341,28 @@ async function refresh() {
     document.getElementById('orders-count').textContent = orders.length;
     const ot = document.getElementById('orders-tbody');
     ot.innerHTML = orders.length === 0
-      ? '<tr><td colspan="7" class="empty">Sin órdenes</td></tr>'
-      : orders.slice(0, 20).map(o => `
-        <tr>
+      ? '<tr><td colspan="5" class="empty">Sin órdenes</td></tr>'
+      : orders.slice(0, 20).map(o => {
+        const invested = o.making || 1;
+        let resultHtml = '⏳ Abierta';
+        let netHtml = '—';
+        if (o.result) {
+          if (o.result.type === 'GANANCIA') {
+            resultHtml = `<span class="value-pos">+${fmtUSD(o.result.amount)} ✅</span>`;
+            netHtml = `<span class="value-pos">+${fmtUSD(o.result.net)}</span>`;
+          } else {
+            resultHtml = '<span class="tag tag-loss">❌ Pérdida</span>';
+            netHtml = `<span class="value-neg">-${fmtUSD(invested)}</span>`;
+          }
+        }
+        return `<tr>
           <td>${(o.time||'').split(' ')[1]||'--'}</td>
-          <td><span class="btc-icon">₿</span><span class="market-name">${(o.bucket||'').substring(0,40)}</span><div class="market-detail">ask=${o.ask?.toFixed(2)} bid=${o.bid?.toFixed(2)}</div></td>
-          <td>${fmtUSD(o.price)}</td>
-          <td><span class="tag tag-buy">${o.side||'BUY'}</span></td>
-          <td>${fmtUSD(o.making)}</td>
-          <td>${o.taking?.toFixed(4)||'--'}</td>
-          <td>${o.status==='matched'?'✅ Matched':'⏳ '+o.status}</td>
-        </tr>`).join('');
+          <td><span class="btc-icon">₿</span> ${(o.bucket||'').substring(0, 35)}</td>
+          <td>${fmtUSD(invested)}</td>
+          <td>${resultHtml}</td>
+          <td>${netHtml}</td>
+        </tr>`;
+      }).join('');
 
     const invested = orders.reduce((s,o) => s + (o.making||0), 0);
     document.getElementById('inv-total').textContent = fmtUSD(invested);

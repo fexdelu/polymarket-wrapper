@@ -357,7 +357,26 @@ async function apiFull(res, env) {
         getCurrentMarket(),
     ]);
     if (orders.length > 0) bot.lastOrder = orders[0];
-    jsonReply(res, { bot, orders, activity, balance, market });
+
+    // Enrich orders with results from activity (match by bucket time)
+    const enrichedOrders = orders.map(order => {
+        const bucketTime = order.bucket?.match(/(\d+:\d+[AP]M-\d+:\d+[AP]M)/)?.[1] || "";
+        // Find matching activity: REDEEM = win, TRADE with usdcSize≈0 = loss
+        const result = activity.find(a => {
+            const aTime = a.title?.match(/(\d+:\d+[AP]M-\d+:\d+[AP]M)/)?.[1] || "";
+            return aTime === bucketTime && (a.type === "REDEEM" || (a.type === "TRADE" && !a.usdcAmount));
+        });
+        return {
+            ...order,
+            result: result ? {
+                type: result.type === "REDEEM" ? "GANANCIA" : "PÉRDIDA",
+                amount: result.usdcAmount || -(order.making || 1),
+                net: (result.usdcAmount || 0) - (order.making || 0),
+            } : null, // pending — still open
+        };
+    });
+
+    jsonReply(res, { bot, orders: enrichedOrders, activity, balance, market });
 }
 
 async function apiChart(res, env) {
