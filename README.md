@@ -29,9 +29,22 @@ PM_FUNDER=0x...            # dirección de la wallet fondeada (Polygon)
 ## Instalación
 
 ```bash
+git clone <repo-url>
 cd polymarket-wrapper
 npm install
 ```
+
+### Configurar credenciales
+
+```bash
+# 1. Copiá el template
+cp .env.example ~/.hermes/polymarket.env
+
+# 2. Editá con tus datos reales
+nano ~/.hermes/polymarket.env
+```
+
+> Las credenciales viven en `~/.hermes/polymarket.env` (fuera del repo). Nunca se commitean. Si formateás la PC, solo necesitás volver a crear ese archivo con tus API keys.
 
 ## Uso
 
