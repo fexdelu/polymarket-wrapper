@@ -159,6 +159,13 @@ async function main() {
                 continue;
             }
 
+            // ── Reasoning ──────────────────────────────────────────
+            const pricePerShare = AMOUNT / (parseFloat(ask) || 0.99);
+            const payoutIfUp = AMOUNT * (1 / (parseFloat(ask) || 0.99));
+            const spreadPct = ((parseFloat(ask) - parseFloat(bid)) / parseFloat(ask) * 100).toFixed(1);
+            const probUp = (1 / (parseFloat(ask) || 0.5) * 100).toFixed(1);
+            log(`🧠 REASONING: BUY UP | ask=$${parseFloat(ask).toFixed(4)} bid=$${parseFloat(bid).toFixed(4)} | spread=${spreadPct}% | prob_up=${probUp}% | ~${pricePerShare.toFixed(2)} shares | payout=$${payoutIfUp.toFixed(2)} if UP wins`);
+
             // Place order
             try {
                 const r = await client.placeMarketOrder({

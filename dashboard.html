@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🚀 Papurri BTC Bot — Dashboard</title>
+<style>
+:root {
+  --bg: #0d0f12;
+  --card: #14161a;
+  --border: #1e2127;
+  --text: #e8eaed;
+  --dim: #6b7280;
+  --green: #00c853;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --orange: #f7931a;
+  --accent: #1a1f2e;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+  padding: 16px;
+}
+.container { max-width: 1100px; margin: 0 auto; }
+
+/* Header */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 0 16px 0;
+}
+.header h1 { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.header .logo { color: var(--orange); font-size: 24px; }
+.status-dot {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+  margin-right: 6px;
+}
+.status-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.status-dot.offline { background: var(--red); }
+.refresh { color: var(--dim); font-size: 12px; }
+
+/* Cards row */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.card .label { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.card .value { font-size: 24px; font-weight: 700; }
+.card .sub { font-size: 12px; color: var(--dim); margin-top: 4px; }
+.card .positive { color: var(--green); }
+.card .negative { color: var(--red); }
+
+/* Bot reasoning card */
+.reasoning-card {
+  background: var(--accent);
+  border: 1px solid #2a3050;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.reasoning-card .r-title {
+  color: var(--blue);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.reasoning-card .r-line { color: #94a3b8; }
+
+/* Table */
+.section-title {
+  font-size: 14px; font-weight: 600; margin: 16px 0 10px 0;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-title .count { font-size: 11px; color: var(--dim); background: var(--card); padding: 2px 8px; border-radius: 10px; }
+
+.table-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+th {
+  text-align: left; padding: 10px 14px; font-size: 11px; color: var(--dim);
+  text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.03); }
+tr:last-child td { border-bottom: none; }
+tr:hover { background: rgba(255,255,255,.02); }
+
+.tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; padding: 2px 8px; border-radius: 12px;
+  font-weight: 500;
+}
+.tag-buy { background: rgba(59,130,246,.15); color: var(--blue); }
+.tag-redeem { background: rgba(0,200,83,.15); color: var(--green); }
+.tag-loss { background: rgba(239,68,68,.15); color: var(--red); }
+.tag-sell { background: rgba(168,85,247,.15); color: #a855f7; }
+
+.btc-icon { color: var(--orange); font-weight: 700; }
+.market-name { font-weight: 500; }
+.market-detail { font-size: 11px; color: var(--dim); margin-top: 2px; }
+.value-pos { color: var(--green); font-weight: 600; }
+.value-neg { color: var(--text); font-weight: 500; }
+.time-ago { color: var(--dim); font-size: 12px; }
+
+/* Loading / Error */
+.loading { text-align: center; padding: 40px; color: var(--dim); }
+.error { color: var(--red); padding: 20px; text-align: center; }
+.empty { color: var(--dim); text-align: center; padding: 30px; font-size: 13px; }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .cards { grid-template-columns: 1fr 1fr; }
+  .card .value { font-size: 18px; }
+  td, th { padding: 8px 10px; font-size: 11px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- Header -->
+<div class="header">
+  <h1><span class="logo">₿</span> Papurri BTC Bot</h1>
+  <div style="display:flex;align-items:center;gap:16px">
+    <span id="status-indicator"><span class="status-dot offline"></span>OFFLINE</span>
+    <span class="refresh" id="last-refresh">--</span>
+  </div>
+</div>
+
+<!-- Cards -->
+<div class="cards">
+  <div class="card">
+    <div class="label">💰 Balance USDC</div>
+    <div class="value" id="bal-usdc">--</div>
+    <div class="sub">Polymarket</div>
+  </div>
+  <div class="card">
+    <div class="label">📊 Invertido (sesión)</div>
+    <div class="value" id="inv-total">--</div>
+    <div class="sub" id="inv-orders">0 órdenes</div>
+  </div>
+  <div class="card">
+    <div class="label">📈 Ganancias (hoy)</div>
+    <div class="value" id="pnl-day">--</div>
+    <div class="sub" id="pnl-pct">--</div>
+  </div>
+  <div class="card">
+    <div class="label">🤖 Bot</div>
+    <div class="value" id="bot-status-text">--</div>
+    <div class="sub" id="bot-uptime">--</div>
+  </div>
+</div>
+
+<!-- Bot Reasoning -->
+<div class="reasoning-card" id="reasoning">
+  <div class="r-title">🧠 Último razonamiento del bot</div>
+  <div class="r-line" id="reasoning-text">Cargando...</div>
+</div>
+
+<!-- Open Orders -->
+<div class="section-title">📋 Órdenes del bot <span class="count" id="orders-count">0</span></div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Hora</th><th>Mercado</th><th>Precio</th><th>Side</th><th>Monto</th><th>Shares</th><th>Estado</th></tr>
+    </thead>
+    <tbody id="orders-tbody">
+      <tr><td colspan="7" class="loading">Cargando...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Activity History -->
+<div class="section-title">📜 Historial de Actividad <span class="count" id="activity-count">0</span></div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Tipo</th><th>Mercado</th><th>Valor</th><th>Tiempo</th></tr>
+    </thead>
+    <tbody id="activity-tbody">
+      <tr><td colspan="4" class="loading">Cargando...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Market Now -->
+<div class="section-title">📡 Mercado Actual</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Mercado</th><th>UP</th><th>DOWN</th><th>Volumen</th><th>Bucket</th></tr>
+    </thead>
+    <tbody id="market-tbody">
+      <tr><td colspan="5" class="loading">Cargando...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div><!-- container -->
+
+<script>
+const API = '/api/full';
+
+function ago(ts) {
+  if (!ts) return '--';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return ts;
+  const diff = Date.now() - d.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'ahora';
+  if (mins < 60) return `${mins}m hace`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h hace`;
+  return `${Math.floor(hrs/24)}d hace`;
+}
+
+function formatUSD(n) {
+  if (n == null || isNaN(n)) return '--';
+  return '$' + parseFloat(n).toFixed(2);
+}
+
+function formatPct(n) {
+  if (n == null || isNaN(n)) return '';
+  const p = parseFloat(n).toFixed(1);
+  return (n >= 0 ? '+' : '') + p + '%';
+}
+
+async function refresh() {
+  try {
+    const r = await fetch(API);
+    const data = await r.json();
+
+    // Bot status
+    const statusEl = document.getElementById('status-indicator');
+    if (data.bot?.running) {
+      statusEl.innerHTML = '<span class="status-dot online"></span>ONLINE · PID ' + data.bot.pid;
+      document.getElementById('bot-status-text').textContent = '🟢 Corriendo';
+      document.getElementById('bot-uptime').textContent = 'PID ' + data.bot.pid + ' · uptime ' + (data.bot.uptime || '?');
+    } else {
+      statusEl.innerHTML = '<span class="status-dot offline"></span>OFFLINE';
+      document.getElementById('bot-status-text').textContent = '🔴 Detenido';
+      document.getElementById('bot-uptime').textContent = 'no está corriendo';
+    }
+
+    // Balance
+    const bal = data.balance;
+    if (bal && !bal.error) {
+      // Polymarket balance response is typically { address, balance, ... }
+      const usdc = bal.balance || bal.usdc || bal.available || '?';
+      document.getElementById('bal-usdc').textContent = typeof usdc === 'number' ? formatUSD(usdc) : usdc;
+    } else {
+      document.getElementById('bal-usdc').textContent = '--';
+    }
+
+    // Orders
+    const orders = data.orders || [];
+    document.getElementById('orders-count').textContent = orders.length;
+    const ordersTbody = document.getElementById('orders-tbody');
+    if (orders.length === 0) {
+      ordersTbody.innerHTML = '<tr><td colspan="7" class="empty">Sin órdenes registradas</td></tr>';
+    } else {
+      ordersTbody.innerHTML = orders.slice(0, 20).map(o => `
+        <tr>
+          <td>${o.time?.split(' ')[1] || '--'}</td>
+          <td>
+            <span class="btc-icon">₿</span>
+            <span class="market-name">${(o.bucket || '').substring(0, 40)}</span>
+            <div class="market-detail">ask=${o.ask?.toFixed(2)} bid=${o.bid?.toFixed(2)}</div>
+          </td>
+          <td>${formatUSD(o.price)}</td>
+          <td><span class="tag tag-buy">${o.side || 'BUY'}</span></td>
+          <td>${formatUSD(o.making)}</td>
+          <td>${o.taking?.toFixed(4) || '--'}</td>
+          <td>${o.status === 'matched' ? '✅ Matched' : '⏳ ' + o.status}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Invested & P&L
+    const totalInvested = orders.reduce((s, o) => s + (o.making || 0), 0);
+    document.getElementById('inv-total').textContent = formatUSD(totalInvested);
+    document.getElementById('inv-orders').textContent = orders.length + ' órdenes';
+
+    // Activity
+    const activity = data.activity || [];
+    document.getElementById('activity-count').textContent = activity.length;
+    const actTbody = document.getElementById('activity-tbody');
+    if (activity.length === 0) {
+      actTbody.innerHTML = '<tr><td colspan="4" class="empty">Sin actividad</td></tr>';
+    } else {
+      // Calculate P&L from activity
+      let pnl = 0;
+      activity.forEach(a => {
+        if (a.type === 'REDEEM') pnl += parseFloat(a.usdcAmount || a.shares || 0);
+        if (a.type === 'TRADE' && a.side === 'BUY') pnl -= parseFloat(a.usdcAmount || 0);
+      });
+
+      actTbody.innerHTML = activity.slice(0, 25).map(a => {
+        let tag = '', value = '';
+        if (a.type === 'REDEEM') {
+          tag = '<span class="tag tag-redeem">✅ Canjear</span>';
+          value = `<span class="value-pos">+${formatUSD(a.usdcAmount || a.shares)}</span>`;
+        } else if (a.type === 'TRADE' && a.side === 'BUY') {
+          tag = '<span class="tag tag-buy">➕ Comprar</span>';
+          value = `<span class="value-neg">-${formatUSD(a.usdcAmount)}</span>`;
+        } else if (a.type === 'TRADE' && a.side === 'SELL') {
+          tag = '<span class="tag tag-sell">💰 Vender</span>';
+          value = `<span class="value-pos">+${formatUSD(a.usdcAmount)}</span>`;
+        } else if (a.type === 'LOSS' || a.type === 'Pérdida') {
+          tag = '<span class="tag tag-loss">❌ Pérdida</span>';
+          value = '—';
+        } else {
+          tag = `<span class="tag">${a.type}</span>`;
+          value = formatUSD(a.usdcAmount);
+        }
+
+        const shares = a.shares ? `<div class="market-detail">${parseFloat(a.shares).toFixed(4)} shares ${a.outcome || ''}</div>` : '';
+
+        return `
+        <tr>
+          <td>${tag}</td>
+          <td>
+            <span class="btc-icon">₿</span>
+            <span class="market-name">${(a.title || '').substring(0, 50)}</span>
+            ${shares}
+          </td>
+          <td>${value}</td>
+          <td class="time-ago">${ago(a.timestamp)}</td>
+        </tr>`;
+      }).join('');
+
+      document.getElementById('pnl-day').textContent = formatUSD(pnl);
+      document.getElementById('pnl-day').className = 'value ' + (pnl >= 0 ? 'positive' : 'negative');
+      document.getElementById('pnl-pct').textContent = '';
+    }
+
+    // Reasoning
+    const lastOrder = orders[0];
+    const reasoningEl = document.getElementById('reasoning-text');
+    if (lastOrder?.reasoning) {
+      reasoningEl.innerHTML = lastOrder.reasoning + '<br>📝 TX: ' + (lastOrder.tx || '--').substring(0, 30) + '...';
+    } else {
+      reasoningEl.textContent = 'Sin órdenes del bot todavía. El razonamiento aparecerá cuando el bot ejecute su primera orden.';
+    }
+
+    // Market
+    const mkt = data.market;
+    const mktTbody = document.getElementById('market-tbody');
+    if (mkt && !mkt.error) {
+      mktTbody.innerHTML = `
+        <tr>
+          <td><span class="btc-icon">₿</span> ${mkt.title || '--'}</td>
+          <td><span style="color:var(--green)">${mkt.upPrice?.toFixed(4) || '--'}</span></td>
+          <td><span style="color:var(--red)">${mkt.downPrice?.toFixed(4) || '--'}</span></td>
+          <td>${formatUSD(mkt.volume)}</td>
+          <td class="time-ago">#${mkt.bucket || '--'}</td>
+        </tr>`;
+    } else {
+      mktTbody.innerHTML = '<tr><td colspan="5" class="empty">No hay mercado activo</td></tr>';
+    }
+
+    document.getElementById('last-refresh').textContent = new Date().toLocaleTimeString('es-AR');
+  } catch (e) {
+    console.error('Refresh error:', e);
+  }
+}
+
+// Initial load + auto-refresh
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>
