@@ -1,0 +1,21 @@
+# Polymarket credentials — NEVER commit these
+.env
+*.env
+polymarket.env
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Debug / experimental scripts
+debug/
+debug_*.js
+debug_*.mjs
+test_*.js
+test_*.mjs
+
+# OS files
+.DS_Store
+Thumbs.db
