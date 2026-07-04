@@ -5,6 +5,10 @@
  *
  * Uso: node btc_loop.mjs [--dry-run] [--amount 5]
  */
+
+// ── Polyfill: atob via Buffer (tolera base64url + padding imperfecto) ──────
+globalThis.atob = (data) => Buffer.from(data, "base64").toString("binary");
+
 import { createSecureClient } from "./node_modules/@polymarket/client/dist/index.js";
 import { Wallet } from "ethers";
 import { readFileSync, appendFileSync } from "fs";

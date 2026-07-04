@@ -7,6 +7,10 @@
  * DNS overridden for Argentina (all *.polymarket.com → direct IP).
  * Tested & working: 2026-07-04 — placed BUY $1.00 FOK, matched.
  */
+
+// ── Polyfill: atob via Buffer (tolera base64url + padding imperfecto) ──────
+globalThis.atob = (data) => Buffer.from(data, "base64").toString("binary");
+
 import { createSecureClient } from "./node_modules/@polymarket/client/dist/index.js";
 import { Wallet } from "ethers";
 import { readFileSync } from "fs";
