@@ -1,0 +1,6 @@
+{
+  "strategy": "fixed",
+  "fixedAmount": 1,
+  "portfolioPercent": 5,
+  "martingaleEnabled": false
+}

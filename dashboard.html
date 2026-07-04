@@ -12,7 +12,17 @@
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; min-height:100vh; padding:16px; }
-.container { max-width:1100px; margin:0 auto; }
+.container { max-width:1400px; margin:0 auto; display:flex; gap:16px; }
+.main { flex:1; min-width:0; }
+.sidebar { width:280px; flex-shrink:0; }
+.sidebar .panel { background:var(--card-bg); border-radius:10px; padding:16px; margin-bottom:16px; border:1px solid var(--border); }
+.sidebar .panel h3 { font-size:14px; margin:0 0 12px 0; color:var(--text); }
+.sidebar label { display:block; font-size:11px; color:var(--dim); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px; }
+.sidebar select, .sidebar input { width:100%; padding:8px 10px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; font-size:13px; margin-bottom:10px; box-sizing:border-box; }
+.sidebar select:focus, .sidebar input:focus { outline:none; border-color:var(--accent); }
+.sidebar .config-hint { font-size:11px; color:var(--dim); margin-top:4px; }
+.sidebar .btn-save { width:100%; padding:8px; font-size:13px; }
+.sidebar .config-saved { font-size:11px; color:var(--green); text-align:center; margin-top:6px; display:none; }
 
 .header { display:flex; align-items:center; justify-content:space-between; padding:0 0 16px 0; }
 .header h1 { font-size:20px; font-weight:700; display:flex; align-items:center; gap:8px; }
@@ -93,6 +103,7 @@ tr:hover { background:rgba(255,255,255,.02); }
 </head>
 <body>
 <div class="container">
+<div class="main">
 
 <div class="header">
   <h1><span class="logo">₿</span> Papurri BTC Bot</h1>
@@ -425,7 +436,13 @@ async function refresh() {
       ? `<tr><td><span class="btc-icon">₿</span> ${mkt.title||'--'}</td><td style="color:var(--green)">${mkt.upPrice?.toFixed(4)||'--'}</td><td style="color:var(--red)">${mkt.downPrice?.toFixed(4)||'--'}</td><td>${fmtUSD(mkt.volume)}</td><td class="time-ago">#${mkt.bucket||'--'}</td></tr>`
       : '<tr><td colspan="5" class="empty">No hay mercado activo</td></tr>';
 
-    document.getElementById('last-refresh').textContent = new Date().toLocaleTimeString('es-AR');
+    document.getElementById('last-refresh').textContent = agoBA(Date.now());
+
+    // Sidebar summary
+    document.getElementById('sb-balance').textContent = fmtUSD(data.balance?.total);
+    document.getElementById('sb-pnl').textContent = fmtUSD(data.balance?.pnl);
+    document.getElementById('sb-orders').textContent = (data.orders||[]).length + ' órd.';
+    document.getElementById('sb-last').textContent = data.bot?.lastOrder?.time?.split(' ')[1] || '--';
 
     // Draw chart
     drawChart();
@@ -436,6 +453,113 @@ async function refresh() {
 refresh();
 setInterval(refresh, 30000);
 window.addEventListener('resize', drawChart);
+
+// ── Config panel ─────────────────────────────────────────────────────────────
+function onStrategyChange() {
+  const s = document.getElementById('cfg-strategy').value;
+  document.getElementById('cfg-fixed-group').style.display = s === 'fixed' ? '' : 'none';
+  document.getElementById('cfg-pct-group').style.display = s === 'portfolio' ? '' : 'none';
+  const hints = {
+    fixed: 'Monto fijo por bucket. Simple y predecible.',
+    conviction: 'Ajusta el monto según el precio: más barato = más fichas.',
+    martingale: 'Duplica la apuesta si perdiste el bucket anterior.',
+    portfolio: 'Invierte un % del balance total en cada bucket.',
+  };
+  document.getElementById('cfg-hint-text').textContent = hints[s] || '';
+  saveConfig();
+}
+
+function getConfig() {
+  return {
+    strategy: document.getElementById('cfg-strategy').value,
+    fixedAmount: parseFloat(document.getElementById('cfg-fixed-amount').value) || 1,
+    portfolioPercent: parseFloat(document.getElementById('cfg-pct').value) || 5,
+  };
+}
+
+async function saveConfig() {
+  const cfg = getConfig();
+  localStorage.setItem('bot-config', JSON.stringify(cfg));
+  try {
+    await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cfg) });
+    const el = document.getElementById('cfg-saved');
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 1500);
+  } catch(e) { console.error('save config:', e); }
+}
+
+async function loadConfig() {
+  // 1) Try localStorage
+  const saved = localStorage.getItem('bot-config');
+  if (saved) {
+    try {
+      const cfg = JSON.parse(saved);
+      document.getElementById('cfg-strategy').value = cfg.strategy || 'fixed';
+      document.getElementById('cfg-fixed-amount').value = cfg.fixedAmount || 1;
+      document.getElementById('cfg-pct').value = cfg.portfolioPercent || 5;
+    } catch {}
+  }
+  // 2) Fetch from server (source of truth)
+  try {
+    const r = await fetch('/api/config');
+    const cfg = await r.json();
+    if (cfg?.strategy) {
+      document.getElementById('cfg-strategy').value = cfg.strategy;
+      document.getElementById('cfg-fixed-amount').value = cfg.fixedAmount || 1;
+      document.getElementById('cfg-pct').value = cfg.portfolioPercent || 5;
+    }
+  } catch {}
+  onStrategyChange();
+}
+
+// Buenos Aires time helper
+function agoBA(timestamp) {
+  if (!timestamp) return '--';
+  const d = new Date(timestamp);
+  if (isNaN(d.getTime())) return '--';
+  return d.toLocaleString('es-AR', { timeZone:'America/Argentina/Buenos_Aires', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+// Wait DOM, then load config
+document.addEventListener('DOMContentLoaded', () => { loadConfig(); });
 </script>
+</div><!-- /main -->
+
+<div class="sidebar">
+  <div class="panel">
+    <h3>⚙️ Configuración de montos</h3>
+    <label>Estrategia</label>
+    <select id="cfg-strategy" onchange="onStrategyChange()">
+      <option value="fixed">Fijo ($)</option>
+      <option value="conviction">Variable por convicción</option>
+      <option value="martingale">Martingala (duplicar)</option>
+      <option value="portfolio">% del portfolio</option>
+    </select>
+    <div id="cfg-fixed-group">
+      <label>Monto fijo (USD)</label>
+      <input type="number" id="cfg-fixed-amount" value="1" min="0.5" step="0.5" onchange="saveConfig()">
+    </div>
+    <div id="cfg-pct-group" style="display:none">
+      <label>% del portfolio</label>
+      <input type="number" id="cfg-pct" value="5" min="1" max="100" step="1" onchange="saveConfig()">
+      <div class="config-hint">Se invierte este % del balance total</div>
+    </div>
+    <div id="cfg-hint-text" class="config-hint">Monto fijo por bucket. Simple y predecible.</div>
+    <button class="btn btn-start btn-save" onclick="saveConfig()">💾 Guardar</button>
+    <div class="config-saved" id="cfg-saved">✅ Guardado</div>
+  </div>
+  <div class="panel">
+    <h3>📈 Resumen rápido</h3>
+    <div style="font-size:12px;color:var(--dim);line-height:1.8">
+      Balance: <strong style="color:var(--text)" id="sb-balance">--</strong><br>
+      P&L hoy: <strong style="color:var(--green)" id="sb-pnl">--</strong><br>
+      Órdenes: <strong style="color:var(--text)" id="sb-orders">--</strong><br>
+      Última: <strong style="color:var(--text)" id="sb-last">--</strong>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
 </body>
 </html>

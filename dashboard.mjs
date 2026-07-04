@@ -55,6 +55,7 @@ https.get = function (o, cb) {
 // ── Config ──────────────────────────────────────────────────────────────────
 const PORT = parseInt(process.argv.find((_, i) => process.argv[i - 1] === "--port") || "3000");
 const LOG_FILE = join(homedir(), "polymarket-wrapper", "btc_bot.log");
+const CONFIG_FILE = join(homedir(), "polymarket-wrapper", "bot-config.json");
 const ENV_FILE = join(homedir(), ".hermes", "polymarket.env");
 const BOT_DIR = join(homedir(), "polymarket-wrapper");
 const BOT_CMD = "node btc_loop.mjs";
@@ -394,6 +395,15 @@ async function apiBotStop(res) {
     jsonReply(res, r);
 }
 
+async function readConfig() {
+    try { return JSON.parse(readFileSync(CONFIG_FILE, "utf-8")); }
+    catch { return { strategy: "fixed", fixedAmount: 1, portfolioPercent: 5, martingaleEnabled: false }; }
+}
+
+function writeConfig(cfg) {
+    writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+}
+
 // ── Server ──────────────────────────────────────────────────────────────────
 const server = createServer(async (req, res) => {
     const url = new URL(req.url, `http://localhost:${PORT}`);
@@ -421,7 +431,19 @@ const server = createServer(async (req, res) => {
             case "/api/full":     return await apiFull(res, env);
             case "/api/chart":    return await apiChart(res, env);
             case "/api/bot/start": return await apiBotStart(res);
-            case "/api/bot/stop":  return await apiBotStop(res);
+            case "/api/bot/stop":   return await apiBotStop(res);
+            case "/api/config":
+                if (req.method === "POST") {
+                    let body = "";
+                    req.on("data", c => body += c);
+                    req.on("end", () => {
+                        try { const cfg = JSON.parse(body); writeConfig(cfg); jsonReply(res, { ok: true, config: cfg }); }
+                        catch (e) { jsonReply(res, { ok: false, error: e.message }, 400); }
+                    });
+                    return;
+                }
+                return jsonReply(res, await readConfig());
+
 
             case "/":
             case "/index.html":

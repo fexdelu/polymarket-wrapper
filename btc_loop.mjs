@@ -54,9 +54,19 @@ https.get = function (o, cb) {
 
 // ── Config ──────────────────────────────────────────────────────────────────
 const LOG_FILE = join(homedir(), "polymarket-wrapper", "btc_bot.log");
+const CONFIG_FILE = join(homedir(), "polymarket-wrapper", "bot-config.json");
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes("--dry-run");
-const AMOUNT = parseFloat(args.find((_, i) => args[i - 1] === "--amount") || "1");
+
+// Read strategy from bot-config.json (dashboard), CLI arg overrides
+let strategy, AMOUNT, portfolioPercent;
+try {
+    const cfg = JSON.parse(readFileSync(CONFIG_FILE, "utf-8"));
+    strategy = cfg.strategy || "fixed";
+    portfolioPercent = cfg.portfolioPercent || 5;
+    AMOUNT = parseFloat(cfg.fixedAmount || "1");
+} catch { AMOUNT = 1; }
+AMOUNT = parseFloat(args.find((_, i) => args[i - 1] === "--amount")) || AMOUNT || 1;
 
 // ── Env ─────────────────────────────────────────────────────────────────────
 const envFile = join(homedir(), ".hermes", "polymarket.env");
@@ -154,8 +164,16 @@ async function main() {
             log(`Book: bid=${bid} ask=${ask}`);
 
             if (DRY_RUN) {
-                log(`[DRY RUN] Would BUY $${AMOUNT} FOK`);
+                log(`[DRY RUN] Would BUY $${AMOUNT} FAK`);
                 await sleep(15000);
+                continue;
+            }
+
+            // Skip if spread > 80% or order book is empty (no liquidity)
+            const spreadRatio = (parseFloat(ask) - parseFloat(bid)) / parseFloat(ask);
+            if (spreadRatio > 0.8 || parseFloat(bid) < 0.05) {
+                log(`⏭️  SKIP bucket ${bucket} — no liquidity (bid=${bid} ask=${ask} spread=${(spreadRatio*100).toFixed(0)}%)`);
+                await sleep(30000);
                 continue;
             }
 
@@ -172,7 +190,7 @@ async function main() {
                     tokenId,
                     side: "BUY",
                     amount: AMOUNT,
-                    orderType: "FOK",
+                    orderType: "FAK",  // Fill-And-Kill — llena lo disponible, no falla por liquidity baja
                 });
                 log(`✅ ORDER: status=${r.status} making=$${r.makingAmount} taking=${r.takingAmount} tx=${r.transactionsHashes?.[0]?.substring(0,16)}...`);
             } catch (e) {
