@@ -6,219 +6,159 @@
 <title>🚀 Papurri BTC Bot — Dashboard</title>
 <style>
 :root {
-  --bg: #0d0f12;
-  --card: #14161a;
-  --border: #1e2127;
-  --text: #e8eaed;
-  --dim: #6b7280;
-  --green: #00c853;
-  --red: #ef4444;
-  --blue: #3b82f6;
-  --orange: #f7931a;
-  --accent: #1a1f2e;
+  --bg: #0d0f12; --card: #14161a; --border: #1e2127; --text: #e8eaed;
+  --dim: #6b7280; --green: #00c853; --red: #ef4444; --blue: #3b82f6;
+  --orange: #f7931a; --accent: #1a1f2e;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  min-height: 100vh;
-  padding: 16px;
-}
-.container { max-width: 1100px; margin: 0 auto; }
+body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; min-height:100vh; padding:16px; }
+.container { max-width:1100px; margin:0 auto; }
 
-/* Header */
-.header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 0 16px 0;
-}
-.header h1 { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-.header .logo { color: var(--orange); font-size: 24px; }
-.status-dot {
-  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
-  margin-right: 6px;
-}
-.status-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); }
-.status-dot.offline { background: var(--red); }
-.refresh { color: var(--dim); font-size: 12px; }
+.header { display:flex; align-items:center; justify-content:space-between; padding:0 0 16px 0; }
+.header h1 { font-size:20px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.header .logo { color:var(--orange); font-size:24px; }
 
-/* Cards row */
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
-}
-.card .label { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
-.card .value { font-size: 24px; font-weight: 700; }
-.card .sub { font-size: 12px; color: var(--dim); margin-top: 4px; }
-.card .positive { color: var(--green); }
-.card .negative { color: var(--red); }
+.status-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; }
+.status-dot.online { background:var(--green); box-shadow:0 0 8px var(--green); }
+.status-dot.offline { background:var(--red); }
 
-/* Bot reasoning card */
+.btn { padding:8px 16px; border-radius:8px; border:none; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
+.btn:active { transform:scale(0.96); }
+.btn-start { background:var(--green); color:#000; }
+.btn-stop  { background:var(--red); color:#fff; }
+.btn-start:hover { background:#00e065; }
+.btn-stop:hover  { background:#f55; }
+.btn:disabled { opacity:.4; cursor:not-allowed; }
+
+.cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:16px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; }
+.card .label { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+.card .value { font-size:22px; font-weight:700; }
+.card .sub { font-size:12px; color:var(--dim); margin-top:4px; }
+.card .positive { color:var(--green); }
+.card .negative { color:var(--red); }
+
+/* Chart */
+.chart-wrap {
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:16px; margin-bottom:16px; position:relative;
+}
+.chart-wrap canvas { width:100%; height:220px; display:block; }
+.chart-tooltip {
+  position:absolute; background:rgba(0,0,0,.9); color:#fff; padding:8px 12px;
+  border-radius:6px; font-size:12px; pointer-events:none; display:none;
+  white-space:nowrap; z-index:10; border:1px solid var(--border);
+}
+
+/* Reasoning */
 .reasoning-card {
-  background: var(--accent);
-  border: 1px solid #2a3050;
-  border-radius: 10px;
-  padding: 14px 16px;
-  margin-bottom: 16px;
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  font-size: 13px;
-  line-height: 1.5;
+  background:var(--accent); border:1px solid #2a3050; border-radius:10px;
+  padding:14px 16px; margin-bottom:16px; font-family:'SF Mono','Fira Code',monospace; font-size:13px;
 }
-.reasoning-card .r-title {
-  color: var(--blue);
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-.reasoning-card .r-line { color: #94a3b8; }
+.reasoning-card .r-title { color:var(--blue); font-weight:600; margin-bottom:4px; }
+.reasoning-card .r-line { color:#94a3b8; line-height:1.5; }
 
-/* Table */
-.section-title {
-  font-size: 14px; font-weight: 600; margin: 16px 0 10px 0;
-  display: flex; align-items: center; gap: 8px;
-}
-.section-title .count { font-size: 11px; color: var(--dim); background: var(--card); padding: 2px 8px; border-radius: 10px; }
+.section-title { font-size:14px; font-weight:600; margin:16px 0 10px; display:flex; align-items:center; gap:8px; }
+.section-title .count { font-size:11px; color:var(--dim); background:var(--card); padding:2px 8px; border-radius:10px; }
 
-.table-wrap {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-}
-table {
-  width: 100%; border-collapse: collapse; font-size: 13px;
-}
-th {
-  text-align: left; padding: 10px 14px; font-size: 11px; color: var(--dim);
-  text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border);
-  font-weight: 600;
-}
-td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.03); }
-tr:last-child td { border-bottom: none; }
-tr:hover { background: rgba(255,255,255,.02); }
+.table-wrap { background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { text-align:left; padding:10px 14px; font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border); font-weight:600; }
+td { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.03); }
+tr:last-child td { border-bottom:none; }
+tr:hover { background:rgba(255,255,255,.02); }
 
-.tag {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 12px; padding: 2px 8px; border-radius: 12px;
-  font-weight: 500;
-}
-.tag-buy { background: rgba(59,130,246,.15); color: var(--blue); }
-.tag-redeem { background: rgba(0,200,83,.15); color: var(--green); }
-.tag-loss { background: rgba(239,68,68,.15); color: var(--red); }
-.tag-sell { background: rgba(168,85,247,.15); color: #a855f7; }
+.tag { display:inline-flex; align-items:center; gap:4px; font-size:12px; padding:2px 8px; border-radius:12px; font-weight:500; }
+.tag-buy { background:rgba(59,130,246,.15); color:var(--blue); }
+.tag-redeem { background:rgba(0,200,83,.15); color:var(--green); }
+.tag-loss { background:rgba(239,68,68,.15); color:var(--red); }
+.tag-sell { background:rgba(168,85,247,.15); color:#a855f7; }
 
-.btc-icon { color: var(--orange); font-weight: 700; }
-.market-name { font-weight: 500; }
-.market-detail { font-size: 11px; color: var(--dim); margin-top: 2px; }
-.value-pos { color: var(--green); font-weight: 600; }
-.value-neg { color: var(--text); font-weight: 500; }
-.time-ago { color: var(--dim); font-size: 12px; }
+.btc-icon { color:var(--orange); font-weight:700; }
+.market-name { font-weight:500; }
+.market-detail { font-size:11px; color:var(--dim); margin-top:2px; }
+.value-pos { color:var(--green); font-weight:600; }
+.value-neg { color:var(--text); font-weight:500; }
+.time-ago { color:var(--dim); font-size:12px; }
 
-/* Loading / Error */
-.loading { text-align: center; padding: 40px; color: var(--dim); }
-.error { color: var(--red); padding: 20px; text-align: center; }
-.empty { color: var(--dim); text-align: center; padding: 30px; font-size: 13px; }
+.refresh { color:var(--dim); font-size:12px; }
+.loading { text-align:center; padding:40px; color:var(--dim); }
+.empty { color:var(--dim); text-align:center; padding:30px; font-size:13px; }
 
-/* Responsive */
-@media (max-width: 600px) {
-  .cards { grid-template-columns: 1fr 1fr; }
-  .card .value { font-size: 18px; }
-  td, th { padding: 8px 10px; font-size: 11px; }
+@media (max-width:600px) {
+  .cards { grid-template-columns:1fr 1fr; }
+  td, th { padding:8px 10px; font-size:11px; }
 }
 </style>
 </head>
 <body>
 <div class="container">
 
-<!-- Header -->
 <div class="header">
   <h1><span class="logo">₿</span> Papurri BTC Bot</h1>
-  <div style="display:flex;align-items:center;gap:16px">
+  <div style="display:flex;align-items:center;gap:12px">
     <span id="status-indicator"><span class="status-dot offline"></span>OFFLINE</span>
+    <button class="btn btn-stop" id="btn-stop" onclick="controlBot('stop')">⏹ Stop</button>
+    <button class="btn btn-start" id="btn-start" onclick="controlBot('start')">▶ Start</button>
     <span class="refresh" id="last-refresh">--</span>
   </div>
 </div>
 
-<!-- Cards -->
 <div class="cards">
-  <div class="card">
-    <div class="label">💰 Balance USDC</div>
-    <div class="value" id="bal-usdc">--</div>
-    <div class="sub">Polymarket</div>
-  </div>
-  <div class="card">
-    <div class="label">📊 Invertido (sesión)</div>
-    <div class="value" id="inv-total">--</div>
-    <div class="sub" id="inv-orders">0 órdenes</div>
-  </div>
-  <div class="card">
-    <div class="label">📈 Ganancias (hoy)</div>
-    <div class="value" id="pnl-day">--</div>
-    <div class="sub" id="pnl-pct">--</div>
-  </div>
-  <div class="card">
-    <div class="label">🤖 Bot</div>
-    <div class="value" id="bot-status-text">--</div>
-    <div class="sub" id="bot-uptime">--</div>
-  </div>
+  <div class="card"><div class="label">💰 Balance USDC</div><div class="value" id="bal-usdc">--</div><div class="sub">Polymarket</div></div>
+  <div class="card"><div class="label">📊 Invertido (sesión)</div><div class="value" id="inv-total">--</div><div class="sub" id="inv-orders">0 órdenes</div></div>
+  <div class="card"><div class="label">📈 Ganancias (hoy)</div><div class="value" id="pnl-day">--</div><div class="sub" id="pnl-pct">--</div></div>
+  <div class="card"><div class="label">🤖 Bot</div><div class="value" id="bot-status-text">--</div><div class="sub" id="bot-uptime">--</div></div>
 </div>
 
-<!-- Bot Reasoning -->
+<!-- Chart -->
+<div class="chart-wrap">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <span style="font-weight:600;font-size:13px">📈 Portfolio P&L</span>
+    <span style="font-size:11px;color:var(--dim)" id="chart-range">últimas 24h</span>
+  </div>
+  <canvas id="chart"></canvas>
+  <div class="chart-tooltip" id="chart-tip"></div>
+</div>
+
+<!-- Reasoning -->
 <div class="reasoning-card" id="reasoning">
-  <div class="r-title">🧠 Último razonamiento del bot</div>
+  <div class="r-title">🧠 Último razonamiento</div>
   <div class="r-line" id="reasoning-text">Cargando...</div>
 </div>
 
-<!-- Open Orders -->
+<!-- Orders -->
 <div class="section-title">📋 Órdenes del bot <span class="count" id="orders-count">0</span></div>
 <div class="table-wrap">
   <table>
-    <thead>
-      <tr><th>Hora</th><th>Mercado</th><th>Precio</th><th>Side</th><th>Monto</th><th>Shares</th><th>Estado</th></tr>
-    </thead>
-    <tbody id="orders-tbody">
-      <tr><td colspan="7" class="loading">Cargando...</td></tr>
-    </tbody>
+    <thead><tr><th>Hora</th><th>Mercado</th><th>Precio</th><th>Side</th><th>Monto</th><th>Shares</th><th>Estado</th></tr></thead>
+    <tbody id="orders-tbody"><tr><td colspan="7" class="loading">Cargando...</td></tr></tbody>
   </table>
 </div>
 
-<!-- Activity History -->
-<div class="section-title">📜 Historial de Actividad <span class="count" id="activity-count">0</span></div>
+<!-- Activity -->
+<div class="section-title">📜 Historial <span class="count" id="activity-count">0</span></div>
 <div class="table-wrap">
   <table>
-    <thead>
-      <tr><th>Tipo</th><th>Mercado</th><th>Valor</th><th>Tiempo</th></tr>
-    </thead>
-    <tbody id="activity-tbody">
-      <tr><td colspan="4" class="loading">Cargando...</td></tr>
-    </tbody>
+    <thead><tr><th>Tipo</th><th>Mercado</th><th>Valor</th><th>Tiempo</th></tr></thead>
+    <tbody id="activity-tbody"><tr><td colspan="4" class="loading">Cargando...</td></tr></tbody>
   </table>
 </div>
 
-<!-- Market Now -->
+<!-- Market -->
 <div class="section-title">📡 Mercado Actual</div>
 <div class="table-wrap">
   <table>
-    <thead>
-      <tr><th>Mercado</th><th>UP</th><th>DOWN</th><th>Volumen</th><th>Bucket</th></tr>
-    </thead>
-    <tbody id="market-tbody">
-      <tr><td colspan="5" class="loading">Cargando...</td></tr>
-    </tbody>
+    <thead><tr><th>Mercado</th><th>UP</th><th>DOWN</th><th>Volumen</th><th>Bucket</th></tr></thead>
+    <tbody id="market-tbody"><tr><td colspan="5" class="loading">Cargando...</td></tr></tbody>
   </table>
 </div>
 
-</div><!-- container -->
+</div>
 
 <script>
 const API = '/api/full';
+const CHART_API = '/api/chart';
 
 function ago(ts) {
   if (!ts) return '--';
@@ -232,161 +172,243 @@ function ago(ts) {
   if (hrs < 24) return `${hrs}h hace`;
   return `${Math.floor(hrs/24)}d hace`;
 }
+function fmtUSD(n) { return (n==null||isNaN(n)) ? '--' : '$'+parseFloat(n).toFixed(2); }
 
-function formatUSD(n) {
-  if (n == null || isNaN(n)) return '--';
-  return '$' + parseFloat(n).toFixed(2);
+async function controlBot(action) {
+  const btn = document.getElementById(action === 'start' ? 'btn-start' : 'btn-stop');
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    const r = await fetch(`/api/bot/${action}`).then(r => r.json());
+    btn.textContent = r.ok ? '✓' : '✗';
+    setTimeout(() => {
+      btn.textContent = action === 'start' ? '▶ Start' : '⏹ Stop';
+      btn.disabled = false;
+    }, 1500);
+    refresh();
+  } catch(e) {
+    btn.textContent = '✗';
+    btn.disabled = false;
+  }
 }
 
-function formatPct(n) {
-  if (n == null || isNaN(n)) return '';
-  const p = parseFloat(n).toFixed(1);
-  return (n >= 0 ? '+' : '') + p + '%';
+// ── Chart ────────────────────────────────────────────────────────────────────
+let chartPoints = [];
+function drawChart() {
+  const canvas = document.getElementById('chart');
+  if (!canvas || !chartPoints.length) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = 220 * dpr;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = '220px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = rect.width - 20, H = 200, padX = 10, padY = 20;
+  ctx.clearRect(0, 0, W + 20, H + 40);
+
+  const vals = chartPoints.map(p => p.value);
+  const min = Math.min(-1, ...vals), max = Math.max(1, ...vals);
+  const range = max - min || 1;
+  const n = chartPoints.length;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,.05)';
+  ctx.lineWidth = .5;
+  for (let i = 0; i <= 4; i++) {
+    const y = padY + (H * i / 4);
+    ctx.beginPath(); ctx.moveTo(padX, y); ctx.lineTo(W + padX, y); ctx.stroke();
+    ctx.fillStyle = '#6b7280'; ctx.font = '10px system-ui';
+    ctx.fillText(fmtUSD(max - range * i / 4), 2, y + 3);
+  }
+
+  if (n < 2) return;
+
+  // Area gradient
+  const grad = ctx.createLinearGradient(0, padY, 0, H + padY);
+  const zeroY = padY + H * (1 - (0 - min) / range);
+  grad.addColorStop(0, 'rgba(0,200,83,0.25)');
+  grad.addColorStop(Math.max(0, (zeroY - padY) / H), 'rgba(0,200,83,0.08)');
+  grad.addColorStop(Math.min(1, (zeroY - padY) / H + .01), 'rgba(239,68,68,0.08)');
+  grad.addColorStop(1, 'rgba(239,68,68,0.25)');
+
+  ctx.beginPath();
+  const xStep = W / Math.max(n - 1, 1);
+  chartPoints.forEach((p, i) => {
+    const x = padX + i * xStep;
+    const y = padY + H * (1 - (p.value - min) / range);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  // Close area to bottom
+  const lastX = padX + (n - 1) * xStep;
+  ctx.lineTo(lastX, H + padY);
+  ctx.lineTo(padX, H + padY);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Zero line
+  ctx.strokeStyle = 'rgba(255,255,255,.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 6]);
+  ctx.beginPath(); ctx.moveTo(padX, zeroY); ctx.lineTo(W + padX, zeroY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#6b7280';
+  ctx.fillText('$0', 2, zeroY - 2);
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 2;
+  chartPoints.forEach((p, i) => {
+    const x = padX + i * xStep;
+    const y = padY + H * (1 - (p.value - min) / range);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Dots
+  chartPoints.forEach((p, i) => {
+    const x = padX + i * xStep;
+    const y = padY + H * (1 - (p.value - min) / range);
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = p.value >= 0 ? '#00c853' : '#ef4444';
+    ctx.fill();
+  });
 }
 
+// Mouse tracking for tooltip
+document.addEventListener('DOMContentLoaded', () => {
+  const canvas = document.getElementById('chart');
+  const tip = document.getElementById('chart-tip');
+  canvas.addEventListener('mousemove', e => {
+    if (!chartPoints.length) return;
+    const rect = canvas.getBoundingClientRect();
+    const W = rect.width - 20, padX = 10;
+    const xStep = W / Math.max(chartPoints.length - 1, 1);
+    const idx = Math.round((e.clientX - rect.left - padX) / xStep);
+    if (idx < 0 || idx >= chartPoints.length) { tip.style.display = 'none'; return; }
+    const p = chartPoints[idx];
+    tip.innerHTML = `<strong>${fmtUSD(p.value)}</strong><br><span style="color:#94a3b8">${p.title||''}</span><br><span style="color:#6b7280">${ago(p.time)}</span>`;
+    tip.style.display = 'block';
+    tip.style.left = (e.clientX - rect.left + 15) + 'px';
+    tip.style.top = (e.clientY - rect.top - 50) + 'px';
+  });
+  canvas.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+});
+
+// ── Refresh ──────────────────────────────────────────────────────────────────
 async function refresh() {
   try {
-    const r = await fetch(API);
-    const data = await r.json();
+    const [fr, cr] = await Promise.all([
+      fetch(API).then(r => r.json()),
+      fetch(CHART_API).then(r => r.json()),
+    ]);
+    const data = fr;
+    chartPoints = Array.isArray(cr) ? cr : [];
 
-    // Bot status
-    const statusEl = document.getElementById('status-indicator');
+    // Status
+    const st = document.getElementById('status-indicator');
+    const bStart = document.getElementById('btn-start');
+    const bStop = document.getElementById('btn-stop');
     if (data.bot?.running) {
-      statusEl.innerHTML = '<span class="status-dot online"></span>ONLINE · PID ' + data.bot.pid;
+      st.innerHTML = '<span class="status-dot online"></span>ONLINE · PID ' + data.bot.pid;
       document.getElementById('bot-status-text').textContent = '🟢 Corriendo';
-      document.getElementById('bot-uptime').textContent = 'PID ' + data.bot.pid + ' · uptime ' + (data.bot.uptime || '?');
+      document.getElementById('bot-uptime').textContent = 'PID ' + data.bot.pid + ' · ' + (data.bot.uptime||'?');
+      bStart.disabled = true;
+      bStop.disabled = false;
     } else {
-      statusEl.innerHTML = '<span class="status-dot offline"></span>OFFLINE';
+      st.innerHTML = '<span class="status-dot offline"></span>OFFLINE';
       document.getElementById('bot-status-text').textContent = '🔴 Detenido';
       document.getElementById('bot-uptime').textContent = 'no está corriendo';
+      bStart.disabled = false;
+      bStop.disabled = true;
     }
 
     // Balance
     const bal = data.balance;
-    if (bal && !bal.error) {
-      // Polymarket balance response is typically { address, balance, ... }
-      const usdc = bal.balance || bal.usdc || bal.available || '?';
-      document.getElementById('bal-usdc').textContent = typeof usdc === 'number' ? formatUSD(usdc) : usdc;
-    } else {
-      document.getElementById('bal-usdc').textContent = '--';
-    }
+    document.getElementById('bal-usdc').textContent = (bal && !bal.error)
+      ? fmtUSD(bal.balance || bal.usdc || bal.available) : '--';
 
     // Orders
     const orders = data.orders || [];
     document.getElementById('orders-count').textContent = orders.length;
-    const ordersTbody = document.getElementById('orders-tbody');
-    if (orders.length === 0) {
-      ordersTbody.innerHTML = '<tr><td colspan="7" class="empty">Sin órdenes registradas</td></tr>';
-    } else {
-      ordersTbody.innerHTML = orders.slice(0, 20).map(o => `
+    const ot = document.getElementById('orders-tbody');
+    ot.innerHTML = orders.length === 0
+      ? '<tr><td colspan="7" class="empty">Sin órdenes</td></tr>'
+      : orders.slice(0, 20).map(o => `
         <tr>
-          <td>${o.time?.split(' ')[1] || '--'}</td>
-          <td>
-            <span class="btc-icon">₿</span>
-            <span class="market-name">${(o.bucket || '').substring(0, 40)}</span>
-            <div class="market-detail">ask=${o.ask?.toFixed(2)} bid=${o.bid?.toFixed(2)}</div>
-          </td>
-          <td>${formatUSD(o.price)}</td>
-          <td><span class="tag tag-buy">${o.side || 'BUY'}</span></td>
-          <td>${formatUSD(o.making)}</td>
-          <td>${o.taking?.toFixed(4) || '--'}</td>
-          <td>${o.status === 'matched' ? '✅ Matched' : '⏳ ' + o.status}</td>
-        </tr>
-      `).join('');
-    }
+          <td>${(o.time||'').split(' ')[1]||'--'}</td>
+          <td><span class="btc-icon">₿</span><span class="market-name">${(o.bucket||'').substring(0,40)}</span><div class="market-detail">ask=${o.ask?.toFixed(2)} bid=${o.bid?.toFixed(2)}</div></td>
+          <td>${fmtUSD(o.price)}</td>
+          <td><span class="tag tag-buy">${o.side||'BUY'}</span></td>
+          <td>${fmtUSD(o.making)}</td>
+          <td>${o.taking?.toFixed(4)||'--'}</td>
+          <td>${o.status==='matched'?'✅ Matched':'⏳ '+o.status}</td>
+        </tr>`).join('');
 
-    // Invested & P&L
-    const totalInvested = orders.reduce((s, o) => s + (o.making || 0), 0);
-    document.getElementById('inv-total').textContent = formatUSD(totalInvested);
+    const invested = orders.reduce((s,o) => s + (o.making||0), 0);
+    document.getElementById('inv-total').textContent = fmtUSD(invested);
     document.getElementById('inv-orders').textContent = orders.length + ' órdenes';
 
     // Activity
     const activity = data.activity || [];
     document.getElementById('activity-count').textContent = activity.length;
-    const actTbody = document.getElementById('activity-tbody');
+    const at = document.getElementById('activity-tbody');
+    let pnl = 0;
     if (activity.length === 0) {
-      actTbody.innerHTML = '<tr><td colspan="4" class="empty">Sin actividad</td></tr>';
+      at.innerHTML = '<tr><td colspan="4" class="empty">Sin actividad</td></tr>';
     } else {
-      // Calculate P&L from activity
-      let pnl = 0;
-      activity.forEach(a => {
-        if (a.type === 'REDEEM') pnl += parseFloat(a.usdcAmount || a.shares || 0);
-        if (a.type === 'TRADE' && a.side === 'BUY') pnl -= parseFloat(a.usdcAmount || 0);
-      });
-
-      actTbody.innerHTML = activity.slice(0, 25).map(a => {
-        let tag = '', value = '';
+      at.innerHTML = activity.slice(0, 25).map(a => {
+        let tag, val;
         if (a.type === 'REDEEM') {
           tag = '<span class="tag tag-redeem">✅ Canjear</span>';
-          value = `<span class="value-pos">+${formatUSD(a.usdcAmount || a.shares)}</span>`;
+          val = `<span class="value-pos">+${fmtUSD(a.usdcAmount||a.shares)}</span>`;
+          pnl += parseFloat(a.usdcAmount||a.shares||0);
         } else if (a.type === 'TRADE' && a.side === 'BUY') {
           tag = '<span class="tag tag-buy">➕ Comprar</span>';
-          value = `<span class="value-neg">-${formatUSD(a.usdcAmount)}</span>`;
+          val = `<span class="value-neg">-${fmtUSD(a.usdcAmount)}</span>`;
+          pnl -= parseFloat(a.usdcAmount||0);
         } else if (a.type === 'TRADE' && a.side === 'SELL') {
           tag = '<span class="tag tag-sell">💰 Vender</span>';
-          value = `<span class="value-pos">+${formatUSD(a.usdcAmount)}</span>`;
-        } else if (a.type === 'LOSS' || a.type === 'Pérdida') {
-          tag = '<span class="tag tag-loss">❌ Pérdida</span>';
-          value = '—';
+          val = `<span class="value-pos">+${fmtUSD(a.usdcAmount)}</span>`;
         } else {
           tag = `<span class="tag">${a.type}</span>`;
-          value = formatUSD(a.usdcAmount);
+          val = fmtUSD(a.usdcAmount);
         }
-
-        const shares = a.shares ? `<div class="market-detail">${parseFloat(a.shares).toFixed(4)} shares ${a.outcome || ''}</div>` : '';
-
-        return `
-        <tr>
-          <td>${tag}</td>
-          <td>
-            <span class="btc-icon">₿</span>
-            <span class="market-name">${(a.title || '').substring(0, 50)}</span>
-            ${shares}
-          </td>
-          <td>${value}</td>
-          <td class="time-ago">${ago(a.timestamp)}</td>
-        </tr>`;
+        const sh = a.shares ? `<div class="market-detail">${parseFloat(a.shares).toFixed(4)} shares ${a.outcome||''}</div>` : '';
+        return `<tr><td>${tag}</td><td><span class="btc-icon">₿</span><span class="market-name">${(a.title||'').substring(0,50)}</span>${sh}</td><td>${val}</td><td class="time-ago">${ago(a.timestamp)}</td></tr>`;
       }).join('');
-
-      document.getElementById('pnl-day').textContent = formatUSD(pnl);
+      document.getElementById('pnl-day').textContent = fmtUSD(pnl);
       document.getElementById('pnl-day').className = 'value ' + (pnl >= 0 ? 'positive' : 'negative');
       document.getElementById('pnl-pct').textContent = '';
     }
 
     // Reasoning
-    const lastOrder = orders[0];
-    const reasoningEl = document.getElementById('reasoning-text');
-    if (lastOrder?.reasoning) {
-      reasoningEl.innerHTML = lastOrder.reasoning + '<br>📝 TX: ' + (lastOrder.tx || '--').substring(0, 30) + '...';
-    } else {
-      reasoningEl.textContent = 'Sin órdenes del bot todavía. El razonamiento aparecerá cuando el bot ejecute su primera orden.';
-    }
+    const last = orders[0];
+    document.getElementById('reasoning-text').innerHTML = last?.reasoning
+      ? last.reasoning + '<br>📝 TX: ' + (last.tx||'--').substring(0, 30) + '...'
+      : 'Sin órdenes del bot todavía.';
 
     // Market
     const mkt = data.market;
-    const mktTbody = document.getElementById('market-tbody');
-    if (mkt && !mkt.error) {
-      mktTbody.innerHTML = `
-        <tr>
-          <td><span class="btc-icon">₿</span> ${mkt.title || '--'}</td>
-          <td><span style="color:var(--green)">${mkt.upPrice?.toFixed(4) || '--'}</span></td>
-          <td><span style="color:var(--red)">${mkt.downPrice?.toFixed(4) || '--'}</span></td>
-          <td>${formatUSD(mkt.volume)}</td>
-          <td class="time-ago">#${mkt.bucket || '--'}</td>
-        </tr>`;
-    } else {
-      mktTbody.innerHTML = '<tr><td colspan="5" class="empty">No hay mercado activo</td></tr>';
-    }
+    document.getElementById('market-tbody').innerHTML = (mkt && !mkt.error)
+      ? `<tr><td><span class="btc-icon">₿</span> ${mkt.title||'--'}</td><td style="color:var(--green)">${mkt.upPrice?.toFixed(4)||'--'}</td><td style="color:var(--red)">${mkt.downPrice?.toFixed(4)||'--'}</td><td>${fmtUSD(mkt.volume)}</td><td class="time-ago">#${mkt.bucket||'--'}</td></tr>`
+      : '<tr><td colspan="5" class="empty">No hay mercado activo</td></tr>';
 
     document.getElementById('last-refresh').textContent = new Date().toLocaleTimeString('es-AR');
-  } catch (e) {
-    console.error('Refresh error:', e);
-  }
+
+    // Draw chart
+    drawChart();
+
+  } catch(e) { console.error(e); }
 }
 
-// Initial load + auto-refresh
 refresh();
 setInterval(refresh, 30000);
+window.addEventListener('resize', drawChart);
 </script>
 </body>
 </html>

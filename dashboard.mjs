@@ -56,7 +56,13 @@ https.get = function (o, cb) {
 const PORT = parseInt(process.argv.find((_, i) => process.argv[i - 1] === "--port") || "3000");
 const LOG_FILE = join(homedir(), "polymarket-wrapper", "btc_bot.log");
 const ENV_FILE = join(homedir(), ".hermes", "polymarket.env");
+const BOT_DIR = join(homedir(), "polymarket-wrapper");
+const BOT_CMD = "node btc_loop.mjs";
 const HTML_FILE = join(dirname(new URL(import.meta.url).pathname), "dashboard.html");
+
+// ── Bot process tracking ────────────────────────────────────────────────────
+let botProcess = null;
+let botStartTime = null;
 
 // ── Env ─────────────────────────────────────────────────────────────────────
 function loadEnv() {
@@ -90,24 +96,106 @@ function jsonReply(res, data, code = 200) {
     res.end(JSON.stringify(data));
 }
 
-// ── Bot status ──────────────────────────────────────────────────────────────
+// ── Bot status & control ────────────────────────────────────────────────────
+import { spawn, execSync as exec } from "child_process";
+
 function getBotStatus() {
-    try {
-        const out = execSync("ps aux | grep 'node btc_loop' | grep -v grep", {
-            encoding: "utf-8",
-            timeout: 3000,
-        }).trim();
-        if (!out) return { running: false, pid: null, uptime: null, lastOrder: null };
-
-        const parts = out.split(/\s+/);
-        const pid = parseInt(parts[1]);
-        // uptime from ps: field 9 is elapsed time
-        const elapsed = parts[9] || "?";
-
-        return { running: true, pid, uptime: elapsed, lastOrder: null };
-    } catch {
-        return { running: false, pid: null, uptime: null, lastOrder: null };
+    // Check our tracked process first
+    if (botProcess && botProcess.exitCode === null) {
+        return {
+            running: true,
+            pid: botProcess.pid,
+            uptime: botStartTime ? elapsed(botStartTime) : "?",
+            managed: true,
+            lastOrder: null,
+        };
     }
+    // Fallback: scan ps
+    try {
+        const out = exec("ps aux | grep 'node btc_loop' | grep -v grep", {
+            encoding: "utf-8", timeout: 3000,
+        }).trim();
+        if (!out) return { running: false, pid: null, uptime: null, managed: false, lastOrder: null };
+        const parts = out.split(/\s+/);
+        return { running: true, pid: parseInt(parts[1]), uptime: parts[9] || "?", managed: false, lastOrder: null };
+    } catch {
+        return { running: false, pid: null, uptime: null, managed: false, lastOrder: null };
+    }
+}
+
+function elapsed(since) {
+    const diff = Math.floor((Date.now() - since) / 1000);
+    const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), s = diff % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`;
+}
+
+function stopBot() {
+    return new Promise((resolve) => {
+        if (botProcess && botProcess.exitCode === null) {
+            botProcess.on("exit", () => resolve({ ok: true, msg: "Bot detenido (managed)" }));
+            botProcess.kill("SIGTERM");
+            setTimeout(() => {
+                if (botProcess.exitCode === null) { botProcess.kill("SIGKILL"); }
+            }, 5000);
+        } else {
+            // Try kill via ps
+            try {
+                exec("pkill -f 'node btc_loop' 2>/dev/null; pkill -f 'btc_loop.mjs' 2>/dev/null", { timeout: 3000 });
+                resolve({ ok: true, msg: "Bot detenido (pkill)" });
+            } catch { resolve({ ok: true, msg: "No se encontró proceso del bot" }); }
+        }
+    });
+}
+
+function startBot() {
+    return new Promise((resolve) => {
+        if (botProcess && botProcess.exitCode === null) {
+            resolve({ ok: false, msg: "Bot ya está corriendo (managed)", pid: botProcess.pid });
+            return;
+        }
+        // Check for existing bot process
+        try {
+            const out = exec("ps aux | grep 'node btc_loop' | grep -v grep", { encoding: "utf-8", timeout: 3000 }).trim();
+            if (out) {
+                const parts = out.split(/\s+/);
+                resolve({ ok: false, msg: "Bot ya está corriendo", pid: parseInt(parts[1]) });
+                return;
+            }
+        } catch {}
+        try {
+            botProcess = spawn("node", ["btc_loop.mjs"], {
+                cwd: BOT_DIR, detached: true, stdio: "ignore",
+            });
+            botProcess.unref();
+            botStartTime = Date.now();
+            resolve({ ok: true, msg: "Bot iniciado", pid: botProcess.pid });
+        } catch (e) {
+            resolve({ ok: false, msg: e.message });
+        }
+    });
+}
+
+// ── Chart data (cumulative P&L from activity) ──────────────────────────────
+async function getChartData(env) {
+    const activity = await getActivity(env);
+    if (!activity.length) return [];
+
+    // Build cumulative P&L, newest first → reverse to chronological
+    const reversed = [...activity].reverse();
+    let cum = 0;
+    const points = [];
+
+    for (const a of reversed) {
+        if (a.type === "REDEEM") cum += parseFloat(a.usdcAmount || a.shares || 0);
+        if (a.type === "TRADE" && a.side === "BUY") cum -= parseFloat(a.usdcAmount || 0);
+        points.push({
+            time: a.timestamp,
+            value: Math.round(cum * 100) / 100,
+            type: a.type,
+            title: (a.title || "").substring(0, 40),
+        });
+    }
+    return points;
 }
 
 // ── Parse log ───────────────────────────────────────────────────────────────
@@ -259,6 +347,21 @@ async function apiFull(res, env) {
     jsonReply(res, { bot, orders, activity, balance, market });
 }
 
+async function apiChart(res, env) {
+    const data = await getChartData(env);
+    jsonReply(res, data);
+}
+
+async function apiBotStart(res) {
+    const r = await startBot();
+    jsonReply(res, r, r.ok ? 200 : 409);
+}
+
+async function apiBotStop(res) {
+    const r = await stopBot();
+    jsonReply(res, r);
+}
+
 // ── Server ──────────────────────────────────────────────────────────────────
 const server = createServer(async (req, res) => {
     const url = new URL(req.url, `http://localhost:${PORT}`);
@@ -284,6 +387,9 @@ const server = createServer(async (req, res) => {
             case "/api/balance":  return await apiBalance(res, env);
             case "/api/market":   return await apiMarket(res);
             case "/api/full":     return await apiFull(res, env);
+            case "/api/chart":    return await apiChart(res, env);
+            case "/api/bot/start": return await apiBotStart(res);
+            case "/api/bot/stop":  return await apiBotStop(res);
 
             case "/":
             case "/index.html":
